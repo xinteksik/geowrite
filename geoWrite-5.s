@@ -254,11 +254,8 @@ pickDocument:
         tax                                     ; 345E AA                       .
         beq     L346B                           ; 345F F0 0A                    ..
 	LoadW   usericon_drive, graph_drive
-L346B:  LoadB   L35B8, 0
-        jsr     isDocOnAppDiskOrRamDisk                           ; 3470 20 91 36                  .6
-        bcc     L347A                           ; 3473 90 05                    ..
-        LoadB   L35B8, 6
-L347A:  jsr     setDocDrive                           ; 347A 20 5F 0E                  _.
+L346B:
+L347A:  jsr     setDocDrive
         jsr     L36C4                           ; 347D 20 C4 36                  .6
         LoadB   fnBuffer, 0
 	LoadW   r7, 7
@@ -272,18 +269,15 @@ L347A:  jsr     setDocDrive                           ; 347A 20 5F 0E           
         lda     r0L                             ; 34AA A5 02                    ..
         cmp     #CANCEL                         ; 34AC C9 02                    ..
         beq     L34CB                           ; 34AE F0 1B                    ..
-        cmp     #DRIVE                            ; 34B0 C9 15                    ..
-        bne     L34BA                           ; 34B2 D0 06                    ..
+        cmp     #$87                            ; MegaPatch: drive buttons return $88+
+        bcc     L34BA                           ; not a drive button, skip
         jsr     swapDrive                       ; 34B4 20 AC 36                  .6
         bra     pickDocument                    ; 34B8 50 99                    P.
 
 L34BA:  cmp     #DISK                           ; 34BA C9 06                    ..
-        bne     openDocument                           ; 34BC D0 10                    ..
-        lda     #<txt_insert_new_disk
-        ldy     #>txt_insert_new_disk
-        jsr     showError                       ; 34C2 20 52 24                  R$
-        jsr     _OpenDisk                       ; 34C5 20 F5 28                  .(
-        bra     pickDocument                    ; 34C9 50 88                    P.
+        bne     openDocument
+        jsr     _OpenDisk                       ; skip showError, go straight to open
+        bra     pickDocument
 
 L34CB:  jmp     showStartupMenu2                ; 34CB 4C 86 35                 L.5
 
@@ -385,21 +379,17 @@ dlgbox_getfiles:
 	.byte	$82
         .byte   $14
 	.word	curDiskName
-	.byte	DBGETFILES
+	.byte	$50             ; MegaPatch multi-drive widget (A/B/C/D buttons)
 	.byte	$04
 	.byte	$04
 	.byte	OPEN
 	.byte	$11
         .byte   $19
-        .byte	DBUSRICON
-        .byte	$11
-        .byte	$3B
-        .word	usericon_drive
         .byte	CANCEL
-	.byte	$11
-        .byte   $4C
+        .byte	$11
+        .byte	$4C
 L35B8:  .byte   DISK
-	.byt	$11
+	.byte	$11
 	.byte	$2A
 	.byte	NULL
 
@@ -484,40 +474,30 @@ getDiskIcon:
 
 ; ----------------------------------------------------------------------------
 swapDrive:
-	ldx     docDrive                        ; 36AC A6 D8                    ..
-        inx                                     ; 36AE E8                       .
-        cpx     #9                              ; 36AF E0 09                    ..
-        beq     L36B5                           ; 36B1 F0 02                    ..
-        ldx     #8                              ; 36B3 A2 08                    ..
-L36B5:  stx     docDrive                        ; 36B5 86 D8                    ..
-        txa                                     ; 36B7 8A                       .
-        jsr     swapUserZp                        ; 36B8 20 39 26                  9&
-        jsr     SetDevice                       ; 36BB 20 B0 C2                  ..
-        jsr     swapUserZp                        ; 36BE 20 39 26                  9&
-        jmp     _OpenDisk                       ; 36C1 4C F5 28                 L.(
+        and     #$0F            ; MegaPatch: drive A=$88→8, B=$89→9, C=$8A→10, D=$8B→11
+        sta     docDrive
+        jsr     swapUserZp
+        jsr     SetDevice
+        jsr     swapUserZp
+        jmp     _OpenDisk
 
 ; ----------------------------------------------------------------------------
-L36C4:  lda     #$84                            ; 36C4 A9 84                    ..
-        sta     r0H                             ; 36C6 85 03                    ..
-        lda     #$1E                            ; 36C8 A9 1E                    ..
-        sta     r0L                             ; 36CA 85 02                    ..
-        lda     docDrive                        ; 36CC A5 D8                    ..
-        cmp     #$08                            ; 36CE C9 08                    ..
-        beq     L36DA                           ; 36D0 F0 08                    ..
-        lda     #$84                            ; 36D2 A9 84                    ..
-        sta     r0H                             ; 36D4 85 03                    ..
-        lda     #$30                            ; 36D6 A9 30                    .0
-        sta     r0L                             ; 36D8 85 02                    ..
-L36DA:  ldy     #$00                            ; 36DA A0 00                    ..
-L36DC:  lda     (r0),y                         ; 36DC B1 02                    ..
-        cmp     #$A0                            ; 36DE C9 A0                    ..
-        beq     L36E8                           ; 36E0 F0 06                    ..
-        sta     curDiskName,y                         ; 36E2 99 62 41                 .bA
-        iny                                     ; 36E5 C8                       .
-        bne     L36DC                           ; 36E6 D0 F4                    ..
-L36E8:  lda     #$00                            ; 36E8 A9 00                    ..
-        sta     curDiskName,y                         ; 36EA 99 62 41                 .bA
-        rts                                     ; 36ED 60                       `
+L36C4:  jsr     OpenDisk                ; open disk; r5 = ptr to disk name
+        txa
+        beq     L36DA                   ; X=0: success, copy name
+        lda     #$00                    ; error: clear name
+        sta     curDiskName
+        rts
+L36DA:  ldy     #$00
+L36DC:  lda     (r5L),y                 ; read from disk name (r5 set by OpenDisk)
+        cmp     #$A0
+        beq     L36E8
+        sta     curDiskName,y
+        iny
+        bne     L36DC
+L36E8:  lda     #$00
+        sta     curDiskName,y
+        rts
 
 ; ----------------------------------------------------------------------------
 recover:

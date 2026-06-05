@@ -477,7 +477,7 @@ repaginateFromLoadedPage:
         jsr     _UpdateRecordFile	; update time stamp
 
 UpdateDocFileHeader:
-	jsr     setDocDrive
+	; setDocDrive call removed for 4-drive support
 	MoveW   docFileHeaderTrkSec, r1L
         jsr     ldR4DiskBlkBuf
         jsr     _GetBlock

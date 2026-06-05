@@ -14,7 +14,7 @@
         .byte 88, 7, 6, 13, 16
 
         .word 141		; size in 254-byte blocks
-        .byte "PRG formatted GEOS file"
+        .byte "PRG formatted GEOS file V1.0"
 
 .segment "FILEINFO"
 .incbin "build/current/geoWrite-fhdr.bin", 2

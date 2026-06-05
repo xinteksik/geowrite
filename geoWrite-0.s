@@ -3881,13 +3881,13 @@ isAlphanumeric:
         cmp     #'9'+1
         bcc     @yes
 @1:
-.if CHAR_ENCODING=CHAR_ENCODING_ASCII
+.if CHAR_ENCODING=CHAR_ENCODING_ASCII .or CHAR_ENCODING=CHAR_ENCODING_CS
 	cmp     #'A'
 .elseif CHAR_ENCODING=CHAR_ENCODING_DE
 	cmp     #'@'			; [XXX '§' in German GEOS, not alphanumeric!]
 .endif
         bcc     @2
-.if CHAR_ENCODING=CHAR_ENCODING_ASCII
+.if CHAR_ENCODING=CHAR_ENCODING_ASCII .or CHAR_ENCODING=CHAR_ENCODING_CS
         cmp     #'Z'+1
 .elseif CHAR_ENCODING=CHAR_ENCODING_DE
         cmp     #']'+1
@@ -3895,7 +3895,7 @@ isAlphanumeric:
         bcc     @yes
 @2:	cmp     #'a'
         bcc     @3
-.if CHAR_ENCODING=CHAR_ENCODING_ASCII
+.if CHAR_ENCODING=CHAR_ENCODING_ASCII .or CHAR_ENCODING=CHAR_ENCODING_CS
         cmp     #'z'+1
 .elseif CHAR_ENCODING=CHAR_ENCODING_DE
         cmp     #'~'+1
@@ -6014,24 +6014,39 @@ findDocDevice:
 	lda     r0L ; loadOpt
         and     #ST_LD_DATA | ST_PR_DATA
         beq     @rts
+        ; scan drives 8 .. 8+NUMDRV-1 to find which holds the document
+        lda     #8
+@try:   sta     curDrive        ; set drive to probe
+        ldx     #$FB            ; output pointer in ZP
+        jsr     GetPtrCurDkNm   ; ($FB-$FC) = ptr to disk name of curDrive
         ldy     #15
-@loop:  lda     DrACurDkNm,y ; cmp disk A name
-        cmp     (r2),y       ; r2 = doc disk name
-        bne     @break
+@loop:  lda     ($FB),y
+        cmp     (r2),y
+        bne     @next
         dey
         bpl     @loop
-        lda     #8
-        sta     docDrive   ; yes, then drive 8
-	rts
-
-@break:	ldy     NUMDRV
-        dey
-        beq     @error
-        lda     #9           ; else must be on drv 9
+        ; match found
+        lda     curDrive
         sta     docDrive
-@rts:	rts
+        lda     appDrive
+        sta     curDrive        ; restore curDrive
+@rts:   rts
 
-@error:	lda     #<txt_same_disk
+@next:  lda     curDrive
+        sec
+        sbc     #8              ; offset from base (0 = drive 8)
+        clc
+        adc     #1              ; next offset
+        cmp     NUMDRV          ; if offset >= NUMDRV: all drives tried
+        bcs     @error
+        lda     curDrive
+        clc
+        adc     #1
+        bra     @try            ; try next drive
+
+@error: lda     appDrive
+        sta     curDrive        ; restore curDrive
+        lda     #<txt_same_disk
         ldy     #>txt_same_disk
         jsr     showError
 	jsr     swapUserZp

@@ -29,7 +29,7 @@ With just **35 KB** of binary code, geoWrite has the following features:
 * headers and footers
 * inline images
 * documents up to 62 pages
-* English and German version
+* English, German and Czech version
 
 ## Source
 
@@ -74,6 +74,26 @@ The build process can re-create a flat "CVT" VLIR file with metadata (track & se
 To prepare cvt file enter
 
     make && make cvt
+
+To build a D64 disk image ready for use in GEOS:
+
+    make d64 LOCALE=cs
+
+## Czech Locale
+
+This fork adds a Czech (`cs`) locale with the following features:
+
+* **CP852 print-time character remapping** — 34 key mappings for Czech diacritics (ě š č ř ž ý á í é ó ú ů ť ď ň and more), using the C64 keyboard to type Czech characters that print correctly to CP852-capable printers
+* **Y2K fix** — year display corrected to 2000–2099
+* **4-drive support** — for MegaPatch 3; A/B/C/D drive buttons in the file dialog, drive cycling 8–11
+* **European date format** — DD. Month YYYY, 24h time; comma as decimal separator
+
+Build and install:
+
+    make d64 LOCALE=cs          # creates build/cs/geoWrite.d64
+    make upload LOCALE=cs       # upload via FTP (configure target in Makefile)
+
+See `CLAUDE.md` for full technical documentation.
 
 ## Binary Collection
 

@@ -39,6 +39,8 @@
 ; for #7
 .if CHAR_ENCODING=CHAR_ENCODING_DE
 .export convertToCp437
+.elseif CHAR_ENCODING=CHAR_ENCODING_CS
+.export convertToCp852
 .endif
 .export showPrintSettings
 
@@ -86,6 +88,8 @@ L06C6:  jsr     L14BD                           ; 06C6 20 BD 14                 
         beq     L06E2                           ; 06CC F0 14                    ..
 .if CHAR_ENCODING=CHAR_ENCODING_DE
 	jsr     convertToCp437
+.elseif CHAR_ENCODING=CHAR_ENCODING_CS
+	jsr     convertToCp852
 .endif
         ldy     L418C                           ; 06CE AC 8C 41                 ..A
         sta     MEM_PRINTDATA,y                         ; 06D1 99 80 76                 ..v
@@ -266,6 +270,38 @@ X0814:	.byte '@','[','\',']','{','|','}','~'	; source: GEOS_de
 L081C:  .byte $EB,$8E,$99,$9A,$84,$94,$81,$E1	; target: CP437
 ;             'δ','Ä','Ö','Ü','ä','ö','ü','ß'
 
+.elseif CHAR_ENCODING=CHAR_ENCODING_CS
+
+convertToCp852:
+	ldy     #34
+@loop:  cmp     cp852_src-1,y
+        beq     @found
+        dey
+        bne     @loop
+        rts
+@found:	lda     cp852_tgt-1,y
+	rts
+
+cp852_src:  .byte '2','3','4','5','6','7','8','9','0'
+            .byte '1','@',':'
+            .byte '!','"','#','$','%','&',$27,'(',')'
+            .byte '^','}','{','~','*'
+            .byte '_','|',';','\','[',']'
+            .byte '<','>'
+cp852_tgt:  .byte $D8,$E7,$9F,$FD,$A7,$EC,$A0,$A1,$82
+;                  ě   š   č   ř   ž   ý   á   í   é
+            .byte $A2,$A3,$85
+;                  ó   ú   ů
+            .byte '1','2','3','4','5','6','7','8','9'
+;                   1   2   3   4   5   6   7   8   9   (Shift+1..9)
+            .byte $9C,$D4,$E5,'(',')'
+;                  ť   ď   ň   (   )
+            .byte $FC,$E6,$AC,$A6,$27,'!'
+;                  Ú   ...  ¬  Ž   '   !
+            .byte ';',':'
+;                  ;   :
+
+
 .endif
 
 ; ----------------------------------------------------------------------------
@@ -291,23 +327,13 @@ L081B:	lda     #0                            ; 081B A9 00                    ..
         lda     a9H                             ; 082E A5 7F                    ..
         sta     L4188                           ; 0830 8D 88 41                 ..A
         jsr     i_BitmapUp                      ; 0833 20 AB C1                  ..
-.if LANG=LANG_DE
-		.byte   $38
-.else
-		.byte   $16
-.endif
-		.byte	$0B
+		.byte   .lobyte(graph_rect16x16)        ; bitmap addr lo (locale-specific)
+		.byte	$0B                             ; bitmap addr hi
 		.byte	$18
 		.byte	$3C
 		.byte	$02
 		.byte	$10
-		.byte	$20
-.if LANG=LANG_DE
-		.byte   $C1
-.else
-		.byte	$9F
-.endif
-		.byte   $08                             ; 083E 08                       .
+        jsr     L089F                           ; bitmap drawn; init selection state
         jsr     L0930                           ; 083F 20 30 09                  0.
         jsr     L093B                           ; 0842 20 3B 09                  ;.
         lda     mouseVector+1                   ; 0845 AD A2 84                 ...
@@ -472,12 +498,8 @@ L0983:  rts                                     ; 0983 60                       
 
 ; ----------------------------------------------------------------------------
 L0984:  jsr     i_BitmapUp                      ; 0984 20 AB C1                  ..
-.if LANG=LANG_DE
-		.byte   $41
-.else
-		.byte   $1F
-.endif
-		.byte	$0B
+		.byte   .lobyte(graph_rect32x16)        ; bitmap addr lo (locale-specific)
+		.byte	$0B                             ; bitmap addr hi
 		.byte	$11
 		.byte	$4D
 		.byte	$04
@@ -486,12 +508,8 @@ L0984:  jsr     i_BitmapUp                      ; 0984 20 AB C1                 
 
 ; ----------------------------------------------------------------------------
 L098E:  jsr     i_BitmapUp                      ; 098E 20 AB C1                  ..
-.if LANG=LANG_DE
-		.byte   $41
-.else
-		.byte   $1F
-.endif
-		.byte	$0B
+		.byte   .lobyte(graph_rect32x16)        ; bitmap addr lo (locale-specific)
+		.byte	$0B                             ; bitmap addr hi
 		.byte	$1B
 		.byte	$4D
 		.byte	$04

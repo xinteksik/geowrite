@@ -38,7 +38,11 @@ LISTEN          := $FFB1
 .export L41CE
 
 ; from #8
+.if CHAR_ENCODING=CHAR_ENCODING_DE
 .import convertToCp437
+.elseif CHAR_ENCODING=CHAR_ENCODING_CS
+.import convertToCp852
+.endif
 .import showPrintSettings
 
 .segment        "CODE7": absolute
@@ -1251,9 +1255,9 @@ getDay:
 ; ----------------------------------------------------------------------------
 getYear:
 	lda     year
-        add     #<1900
+        add     #<2000
         sta     r3L
-        lda     #>1900
+        lda     #>2000
         adc     #0
         sta     r3H
         lda     #0
@@ -1401,6 +1405,8 @@ L3F3C:  jsr     CmpR15Cursor3Ptr                           ; 3F3C 20 2A 28      
         beq     L3F3C                           ; 3F52 F0 E8                    ..
 .if CHAR_ENCODING=CHAR_ENCODING_DE
 	jsr     convertToCp437
+.elseif CHAR_ENCODING=CHAR_ENCODING_CS
+	jsr     convertToCp852
 .endif
         ldy     r11L                            ; 3F54 A4 18                    ..
         sta     MEM_PRINTDATA,y                         ; 3F56 99 80 76                 ..v
