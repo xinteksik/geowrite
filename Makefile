@@ -62,7 +62,7 @@ d64: cvt
 	c1541 $(BUILD_DIR)/geoWrite.d64 -geoswrite $(BUILD_DIR)/geoWrite.cvt
 
 upload: d64
-	curl -T build/cs/geoWrite.d64 ftp://anonymous:@192.168.1.250/Temp/
+	curl -T $(BUILD_DIR)/geoWrite.d64 ftp://anonymous:@192.168.1.250/Temp/
 
 clean:
 	rm -rf build
